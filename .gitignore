@@ -1,0 +1,43 @@
+## Ignore arquivos de build e dependências
+bin/
+obj/
+packages/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Arquivos do Rider/VSCode/VS
+.idea/
+.vscode/
+.vs/
+
+## Logs
+*.log
+
+## Arquivos temporários
+*.tmp
+*.temp
+*.bak
+*.ncb
+*.cache
+*.dbmdl
+*.pdb
+*.mdb
+
+## Sistema
+.DS_Store
+Thumbs.db
+
+## Secrets
+secrets.json
+appsettings.*.json
+*.key
+*.pfx
+
+## Outros
+test-results/
+*.coverage
+*.lcov
+*.json.diff

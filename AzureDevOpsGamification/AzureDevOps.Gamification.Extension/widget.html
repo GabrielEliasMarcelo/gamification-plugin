@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Developer Ranking Widget</title>
+    <script src="lib/VSS.SDK.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 10px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: white;
+        }
+        .widget-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .widget-header {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .ranking-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .developer-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .developer-item:last-child {
+            border-bottom: none;
+        }
+        .developer-rank {
+            font-weight: bold;
+            color: #0078d4;
+            width: 30px;
+        }
+        .developer-name {
+            flex: 1;
+            margin-left: 10px;
+            font-size: 14px;
+        }
+        .developer-commits {
+            font-size: 12px;
+            color: #666;
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100px;
+            font-style: italic;
+            color: #666;
+        }
+        .error {
+            color: #d73a49;
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="widget-container">
+        <div class="widget-header">🏆 Top 10 Developers</div>
+        <div id="content" class="loading">Carregando...</div>
+    </div>
+
+    <script>
+        // Configuração da API backend - deve ser configurada para o ambiente
+        const API_BASE_URL = 'https://your-api-endpoint.azurewebsites.net';
+        
+        // Inicialização do VSS SDK - integração com contexto do Azure DevOps
+        VSS.init({
+            explicitNotifyLoaded: true,
+            usePlatformStyles: true
+        });
+
+        VSS.ready(() => {
+            // Obtenção do contexto do projeto atual - elimina necessidade de configuração manual
+            const projectContext = VSS.getWebContext().project;
+            const organizationName = VSS.getWebContext().account.name;
+            
+            loadRanking(organizationName, projectContext.name);
+        });
+
+        async function loadRanking(organization, project) {
+            try {
+                // Obtenção do token de acesso via VSS SDK - usa autenticação do usuário logado
+                const token = await new Promise((resolve, reject) => {
+                    VSS.getAccessToken().then(resolve).catch(reject);
+                });
+
+                // Chamada para API backend com parâmetros do contexto atual
+                const response = await fetch(
+                    `${API_BASE_URL}/api/ranking/developers?organization=${encodeURIComponent(organization)}&project=${encodeURIComponent(project)}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const ranking = await response.json();
+                renderRanking(ranking);
+                
+            } catch (error) {
+                console.error('Erro ao carregar ranking:', error);
+                showError('Não foi possível carregar o ranking de desenvolvedores.');
+            }
+        }
+
+        function renderRanking(ranking) {
+            const contentDiv = document.getElementById('content');
+            
+            if (!ranking || ranking.length === 0) {
+                contentDiv.innerHTML = '<div class="error">Nenhum dado disponível</div>';
+                return;
+            }
+
+            // Renderização da lista de ranking - HTML simples para performance
+            const rankingHTML = ranking
+                .slice(0, 10) // Garantir top 10
+                .map((developer, index) => `
+                    <div class="developer-item">
+                        <span class="developer-rank">#${index + 1}</span>
+                        <span class="developer-name" title="${developer.developerName}">
+                            ${truncateName(developer.developerName)}
+                        </span>
+                        <span class="developer-commits" title="${developer.commitCount} commits | Score: ${Math.round(developer.score)}">
+                            ${developer.commitCount}
+                        </span>
+                    </div>
+                `).join('');
+
+            contentDiv.innerHTML = `<div class="ranking-list">${rankingHTML}</div>`;
+            contentDiv.className = 'ranking-list';
+        }
+
+        function truncateName(name, maxLength = 20) {
+            return name.length > maxLength ? name.substring(0, maxLength) + '...' : name;
+        }
+
+        function showError(message) {
+            document.getElementById('content').innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        // Notificação de carregamento completo - necessário para VSS SDK
+        VSS.notifyLoadSucceeded();
+    </script>
+</body>
+</html>
